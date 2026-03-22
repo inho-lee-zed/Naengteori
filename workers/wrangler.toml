@@ -1,0 +1,15 @@
+name = "naengteori-api"
+main = "src/index.ts"
+compatibility_date = "2025-03-22"
+
+[vars]
+ENVIRONMENT = "development"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "naengteori-db"
+database_id = "placeholder-id"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "naengteori-images"
