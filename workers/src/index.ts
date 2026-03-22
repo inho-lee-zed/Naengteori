@@ -3,10 +3,12 @@ import { cors } from 'hono/cors'
 import { scanRoutes } from './routes/scan'
 import { recipeRoutes } from './routes/recipes'
 import { profileRoutes } from './routes/profile'
+import { imageRoutes } from './routes/images'
 
 export type Bindings = {
   DB: D1Database
   IMAGES?: R2Bucket
+  AI?: Ai
   ANTHROPIC_API_KEY: string
 }
 
@@ -30,6 +32,7 @@ app.get('/api/health', (c) =>
 app.route('/api/scan', scanRoutes)
 app.route('/api/recipes', recipeRoutes)
 app.route('/api/profile', profileRoutes)
+app.route('/api/images', imageRoutes)
 
 // 404
 app.notFound((c) => c.json({ error: 'Not Found' }, 404))

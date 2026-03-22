@@ -1,23 +1,67 @@
-import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useState } from 'react'
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { colors } from '../../src/constants/colors'
-import { mockRecipes } from '../../src/utils/mockData'
+import { getRecipeDetail } from '../../src/services/api'
+import type { RecipeDetail } from '../../src/services/api'
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const recipe = mockRecipes.find((r) => r.id === id)
+  const [recipe, setRecipe] = useState<RecipeDetail | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [recipeImage, setRecipeImage] = useState<string | null>(null)
+  const [imageLoading, setImageLoading] = useState(false)
 
-  if (!recipe) {
+  const API_BASE = 'https://naengteori-api.naengteori.workers.dev/api'
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return
+      setIsLoading(true)
+      setError(null)
+      getRecipeDetail(id)
+        .then((data) => {
+          setRecipe(data)
+          // Fetch recipe image
+          setImageLoading(true)
+          fetch(`${API_BASE}/recipes/${id}/image`)
+            .then((res) => res.json())
+            .then((img: { imageUrl?: string }) => {
+              if (img.imageUrl) setRecipeImage(img.imageUrl)
+            })
+            .catch(() => {})
+            .finally(() => setImageLoading(false))
+        })
+        .catch((err) =>
+          setError(err instanceof Error ? err.message : '레시피를 불러올 수 없습니다.')
+        )
+        .finally(() => setIsLoading(false))
+    }, [id])
+  )
+
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.notFound}>레시피를 찾을 수 없어요 😢</Text>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.backLink}>돌아가기</Text>
-        </Pressable>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  if (error || !recipe) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <Text style={styles.notFound}>{error || '레시피를 찾을 수 없어요 😢'}</Text>
+          <Pressable onPress={() => router.back()}>
+            <Text style={styles.backLink}>돌아가기</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     )
   }
@@ -46,6 +90,20 @@ export default function RecipeDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Recipe Image */}
+        {imageLoading ? (
+          <View style={styles.imagePlaceholder}>
+            <ActivityIndicator size="small" color={colors.primary[500]} />
+            <Text style={styles.imageLoadingText}>요리 이미지 생성 중...</Text>
+          </View>
+        ) : recipeImage ? (
+          <Image
+            source={{ uri: recipeImage }}
+            style={styles.recipeImage}
+            resizeMode="cover"
+          />
+        ) : null}
+
         <Text style={styles.title}>{recipe.title}</Text>
         <Text style={styles.description}>{recipe.description}</Text>
 
@@ -63,17 +121,23 @@ export default function RecipeDetailScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>재료</Text>
-        <View style={styles.ingredientList}>
-          {recipe.ingredients.map((ing) => (
-            <View key={ing.id} style={styles.ingredientChip}>
-              <Text style={styles.ingredientText}>{ing.name}</Text>
+        {recipe.ingredients.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>재료</Text>
+            <View style={styles.ingredientList}>
+              {recipe.ingredients.map((ing, idx) => (
+                <View key={idx} style={styles.ingredientChip}>
+                  <Text style={styles.ingredientText}>
+                    {ing.name} {ing.amount ? `(${ing.amount})` : ''}
+                  </Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>
-          조리 순서 ({recipe.steps.length}단계, 약 {Math.ceil(totalTime / 60)}분)
+          조리 순서 ({recipe.steps.length}단계{totalTime > 0 ? `, 약 ${Math.ceil(totalTime / 60)}분` : ''})
         </Text>
         {recipe.steps.map((step) => (
           <View key={step.order} style={styles.stepRow}>
@@ -103,11 +167,21 @@ export default function RecipeDetailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.neutral[0] },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12,
   },
   content: { paddingHorizontal: 20, paddingBottom: 100 },
+  recipeImage: {
+    width: '100%', height: 220, borderRadius: 16, marginBottom: 16,
+    backgroundColor: colors.neutral[200],
+  },
+  imagePlaceholder: {
+    width: '100%', height: 220, borderRadius: 16, marginBottom: 16,
+    backgroundColor: colors.neutral[100], alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  imageLoadingText: { fontSize: 13, color: colors.neutral[400] },
   title: { fontSize: 24, fontWeight: '700', color: colors.neutral[800], marginBottom: 6 },
   description: { fontSize: 14, color: colors.neutral[500], lineHeight: 22, marginBottom: 16 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24 },
@@ -138,6 +212,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   cookButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  notFound: { fontSize: 16, color: colors.neutral[500], textAlign: 'center', marginTop: 100 },
+  notFound: { fontSize: 16, color: colors.neutral[500], textAlign: 'center' },
   backLink: { fontSize: 14, color: colors.primary[500], textAlign: 'center', marginTop: 12 },
 })

@@ -1,18 +1,31 @@
-import { useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { colors } from '../../../src/constants/colors'
-import { mockRecipes } from '../../../src/utils/mockData'
+import { getRecipeDetail } from '../../../src/services/api'
+import type { RecipeDetail } from '../../../src/services/api'
 
 export default function CookingModeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const recipe = mockRecipes.find((r) => r.id === id)
+  const [recipe, setRecipe] = useState<RecipeDetail | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(0)
   const [timer, setTimer] = useState(0)
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return
+      setIsLoading(true)
+      getRecipeDetail(id)
+        .then(setRecipe)
+        .catch(() => {})
+        .finally(() => setIsLoading(false))
+    }, [id])
+  )
 
   const steps = recipe?.steps || []
   const step = steps[currentStep]
@@ -42,10 +55,23 @@ export default function CookingModeScreen() {
     }
   }, [isTimerRunning, timer])
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   if (!recipe || !step) {
     return (
       <SafeAreaView style={styles.safe}>
         <Text style={styles.notFound}>레시피를 찾을 수 없어요</Text>
+        <Pressable onPress={() => router.back()}>
+          <Text style={styles.backLink}>돌아가기</Text>
+        </Pressable>
       </SafeAreaView>
     )
   }
@@ -227,5 +253,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   completeBtnText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notFound: { fontSize: 16, color: colors.neutral[500], textAlign: 'center', marginTop: 100 },
+  backLink: { fontSize: 14, color: colors.primary[500], textAlign: 'center', marginTop: 12 },
 })

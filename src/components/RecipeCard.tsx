@@ -1,10 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../constants/colors'
-import type { MockRecipeCard } from '../utils/mockData'
+import type { RecipeRecommendation } from '../services/api'
 
 interface RecipeCardProps {
-  recipe: MockRecipeCard
+  recipe: RecipeRecommendation
   onPress: () => void
 }
 
