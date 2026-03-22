@@ -1,6 +1,4 @@
-const API_BASE = __DEV__
-  ? 'http://localhost:8787/api'
-  : 'https://naengteori-api.naengteori.workers.dev/api'
+const API_BASE = 'https://naengteori-api.naengteori.workers.dev/api'
 
 async function request<T>(
   path: string,

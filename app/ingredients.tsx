@@ -8,30 +8,60 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { colors } from '../src/constants/colors'
 import { IngredientCard } from '../src/components/IngredientCard'
-import { mockIngredients } from '../src/utils/mockData'
+import { scanImage } from '../src/services/api'
 import type { Ingredient } from '../src/types'
 
 export default function IngredientsScreen() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>()
+  const { width: screenWidth } = useWindowDimensions()
   const [isAnalyzing, setIsAnalyzing] = useState(true)
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [imageAspect, setImageAspect] = useState(16 / 9)
 
   useEffect(() => {
-    // Simulate AI analysis
-    const timer = setTimeout(() => {
-      setIngredients(mockIngredients)
+    if (imageUri) {
+      Image.getSize(decodeURIComponent(imageUri), (w, h) => {
+        setImageAspect(w / h)
+      })
+    }
+  }, [imageUri])
+
+  const runScan = async (uri: string) => {
+    setIsAnalyzing(true)
+    setError(null)
+    try {
+      const result = await scanImage(decodeURIComponent(uri))
+      const mapped: Ingredient[] = result.ingredients.map((item, index) => ({
+        id: `${result.id}-${index}`,
+        name: item.name,
+        category: item.category,
+        confidence: item.confidence,
+      }))
+      setIngredients(mapped)
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : '재료 인식에 실패했습니다.'
+      )
+    } finally {
       setIsAnalyzing(false)
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [])
+    }
+  }
+
+  useEffect(() => {
+    if (imageUri) {
+      runScan(imageUri)
+    }
+  }, [imageUri])
 
   const handleRemove = (id: string) => {
     setIngredients((prev) => prev.filter((i) => i.id !== id))
@@ -65,8 +95,14 @@ export default function IngredientsScreen() {
       {imageUri && (
         <Image
           source={{ uri: decodeURIComponent(imageUri) }}
-          style={styles.image}
-          resizeMode="cover"
+          style={[
+            styles.image,
+            {
+              width: screenWidth - 40,
+              height: Math.min((screenWidth - 40) / imageAspect, 300),
+            },
+          ]}
+          resizeMode="contain"
         />
       )}
 
@@ -76,6 +112,19 @@ export default function IngredientsScreen() {
           <Text style={styles.analyzingText}>
             냉장고 탈탈 털어보는 중... 🔍
           </Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.neutral[400]} />
+          <Text style={styles.errorText}>{error}</Text>
+          {imageUri && (
+            <Pressable
+              style={styles.retryBtn}
+              onPress={() => runScan(imageUri)}
+            >
+              <Text style={styles.retryBtnText}>다시 시도</Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         <>
@@ -132,7 +181,12 @@ export default function IngredientsScreen() {
           <View style={styles.bottomCta}>
             <Pressable
               style={styles.ctaButton}
-              onPress={() => router.push('/recipes')}
+              onPress={() =>
+                router.push({
+                  pathname: '/recipes',
+                  params: { ingredients: ingredients.map((i) => i.name).join(',') },
+                })
+              }
             >
               <Text style={styles.ctaText}>
                 {ingredients.length}개 재료로 레시피 찾기!
@@ -163,8 +217,7 @@ const styles = StyleSheet.create({
     color: colors.neutral[700],
   },
   image: {
-    height: 180,
-    marginHorizontal: 20,
+    alignSelf: 'center',
     borderRadius: 16,
     backgroundColor: colors.neutral[200],
   },
@@ -235,6 +288,29 @@ const styles = StyleSheet.create({
   addConfirmText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: 15,
+    color: colors.neutral[500],
+    textAlign: 'center',
+  },
+  retryBtn: {
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '600',
   },
   bottomCta: {
