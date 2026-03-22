@@ -6,7 +6,7 @@ import { profileRoutes } from './routes/profile'
 
 export type Bindings = {
   DB: D1Database
-  IMAGES: R2Bucket
+  IMAGES?: R2Bucket
   ANTHROPIC_API_KEY: string
 }
 

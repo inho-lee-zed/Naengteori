@@ -50,13 +50,15 @@ scanRoutes.post('/', async (c) => {
     )
     mediaType = file.type
 
-    // Upload to R2
-    const imageId = crypto.randomUUID()
-    const ext = file.type.split('/')[1]
-    const key = `scans/${imageId}.${ext}`
-    await c.env.IMAGES.put(key, buffer, {
-      httpMetadata: { contentType: file.type },
-    })
+    // Upload to R2 (if available)
+    if (c.env.IMAGES) {
+      const imageId = crypto.randomUUID()
+      const ext = file.type.split('/')[1]
+      const key = `scans/${imageId}.${ext}`
+      await c.env.IMAGES.put(key, buffer, {
+        httpMetadata: { contentType: file.type },
+      })
+    }
   } else if (contentType.includes('application/json')) {
     const body = await c.req.json<{ image: string; mediaType?: string }>()
     if (!body.image) {
