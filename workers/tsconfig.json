@@ -3,12 +3,19 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ESNext"],
-    "types": ["@cloudflare/workers-types"],
+    "lib": [
+      "ESNext"
+    ],
+    "types": [
+      "@cloudflare/workers-types"
+    ],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "extends": "expo/tsconfig.base"
 }
