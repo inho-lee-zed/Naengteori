@@ -27,6 +27,10 @@ scanRoutes.post('/', async (c) => {
 
   let imageBase64: string
   let mediaType: string
+  let r2Key: string | null = null
+
+  // Generate scanId early so it can be used as the R2 key
+  const scanId = crypto.randomUUID()
 
   if (contentType.includes('multipart/form-data')) {
     const formData = await c.req.formData()
@@ -50,12 +54,11 @@ scanRoutes.post('/', async (c) => {
     )
     mediaType = file.type
 
-    // Upload to R2 (if available)
+    // Upload to R2 (if available), key tied to scanId for consistent URL
     if (c.env.IMAGES) {
-      const imageId = crypto.randomUUID()
       const ext = file.type.split('/')[1]
-      const key = `scans/${imageId}.${ext}`
-      await c.env.IMAGES.put(key, buffer, {
+      r2Key = `scans/${scanId}.${ext}`
+      await c.env.IMAGES.put(r2Key, buffer, {
         httpMetadata: { contentType: file.type },
       })
     }
@@ -138,8 +141,12 @@ JSON 배열로 응답해주세요. 각 항목은 다음 형식입니다:
     return c.json({ error: 'Failed to parse AI analysis', rawResponse: textContent.text }, 502)
   }
 
+  // Build image URL: use serving endpoint when image was stored in R2, else bare key
+  const imageUrl = r2Key
+    ? `/api/images/${r2Key}`
+    : `scans/${scanId}`
+
   // Save to D1 (best-effort, return results even if DB fails)
-  const scanId = crypto.randomUUID()
   const now = new Date().toISOString()
   let dbSaved = false
   let dbError = ''
@@ -148,7 +155,7 @@ JSON 배열로 응답해주세요. 각 항목은 다음 형식입니다:
     await c.env.DB.prepare(
       'INSERT INTO scans (id, user_id, image_url, created_at) VALUES (?, ?, ?, ?)'
     )
-      .bind(scanId, null, `scans/${scanId}`, now)
+      .bind(scanId, null, imageUrl, now)
       .run()
 
     for (const ing of ingredients) {
@@ -166,7 +173,7 @@ JSON 배열로 응답해주세요. 각 항목은 다음 형식입니다:
 
   const response: ScanResponse = {
     id: scanId,
-    imageUrl: `scans/${scanId}`,
+    imageUrl,
     ingredients,
     createdAt: now,
   }

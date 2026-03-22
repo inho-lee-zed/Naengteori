@@ -10,7 +10,10 @@ binding = "DB"
 database_name = "naengteori-db"
 database_id = "37520f8a-08f8-4928-9e60-83fb2ce7dcca"
 
-# R2 버킷 (활성화 후 주석 해제)
+[ai]
+binding = "AI"
+
+# R2 버킷 (대시보드에서 R2 활성화 후 주석 해제)
 # [[r2_buckets]]
 # binding = "IMAGES"
 # bucket_name = "naengteori-images"
