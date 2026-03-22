@@ -1,7 +1,7 @@
-# Naengteori (냉터리)
+# Naengteori (냉털이)
 
 ## 프로젝트 개요
-냉터리 - React Native 앱
+냉털이 - 냉장고 사진 → AI 재료 인식 → 레시피 추천 React Native 앱
 
 ## 기술 스택
 - React Native (Expo)
