@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"npx tsc --noEmit 2>&1\",\"description\":\"TypeScript check workers\"}",
-  "error": "Exit code 2\nsrc/routes/scan.ts(39,37): error TS2339: Property 'type' does not exist on type 'never'.\nsrc/routes/scan.ts(43,14): error TS2339: Property 'size' does not exist on type 'never'.\nsrc/routes/scan.ts(47,31): error TS2339: Property 'arrayBuffer' does not exist on type 'never'.\nsrc/routes/scan.ts(51,22): error TS2339: Property 'type' does not exist on type 'never'.\nsrc/routes/scan.ts(55,22): error TS2339: Property 'type' does not exist on type 'never'.\nsrc/routes/scan.ts(58,41): error TS2...",
-  "timestamp": "2026-03-22T01:28:16.591Z",
-  "retry_count": 2
+  "tool_input_preview": "{\"command\":\"CLOUDFLARE_OAUTH_TOKEN=\\\"IYlqrpcGbwXxRlJevk_pXFBc92H_90h-YldeGHi8yrk.StqiXXluvsW5bb8BGcNPoIYE2bdqtVfjlTb5hAO8PsY\\\" npx wrangler deploy 2>&1 | tail -2 && sleep 3 && BASE64=$(base64 -i /tmp/...",
+  "error": "Exit code 1\n  https://naengteori-api.naengteori.workers.dev\nCurrent Version ID: 2c33f7fb-ba56-48b1-bad3-6b6b03c0e6de\n<anonymous_script>:1\nInternal Server Error\n^\n\nSyntaxError: Unexpected token 'I', \"Internal S\"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at Socket.<anonymous> ([eval]:1:42)\n    at Socket.emit (node:events:508:20)\n    at addChunk (node:internal/streams/readable:564:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:515:3)\n    at Readable.push (nod...",
+  "timestamp": "2026-03-22T02:35:29.253Z",
+  "retry_count": 1
 }

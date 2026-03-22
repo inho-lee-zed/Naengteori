@@ -79,7 +79,7 @@ scanRoutes.post('/', async (c) => {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [
         {
@@ -115,7 +115,7 @@ JSON 배열로 응답해주세요. 각 항목은 다음 형식입니다:
   if (!claudeResponse.ok) {
     const errorText = await claudeResponse.text()
     console.error('Claude API error:', errorText)
-    return c.json({ error: 'AI analysis failed' }, 502)
+    return c.json({ error: 'AI analysis failed', detail: errorText, status: claudeResponse.status }, 502)
   }
 
   const claudeResult = await claudeResponse.json<{
@@ -135,25 +135,33 @@ JSON 배열로 응답해주세요. 각 항목은 다음 형식입니다:
     ingredients = JSON.parse(jsonMatch[0])
   } catch {
     console.error('Failed to parse AI response:', textContent.text)
-    return c.json({ error: 'Failed to parse AI analysis' }, 502)
+    return c.json({ error: 'Failed to parse AI analysis', rawResponse: textContent.text }, 502)
   }
 
-  // Save to D1
+  // Save to D1 (best-effort, return results even if DB fails)
   const scanId = crypto.randomUUID()
   const now = new Date().toISOString()
+  let dbSaved = false
+  let dbError = ''
 
-  await c.env.DB.prepare(
-    'INSERT INTO scans (id, user_id, image_url, created_at) VALUES (?, ?, ?, ?)'
-  )
-    .bind(scanId, 'anonymous', `scans/${scanId}`, now)
-    .run()
-
-  for (const ing of ingredients) {
+  try {
     await c.env.DB.prepare(
-      'INSERT INTO recognized_ingredients (id, scan_id, name, category, confidence, confirmed) VALUES (?, ?, ?, ?, ?, ?)'
+      'INSERT INTO scans (id, user_id, image_url, created_at) VALUES (?, ?, ?, ?)'
     )
-      .bind(crypto.randomUUID(), scanId, ing.name, ing.category, ing.confidence, false)
+      .bind(scanId, null, `scans/${scanId}`, now)
       .run()
+
+    for (const ing of ingredients) {
+      await c.env.DB.prepare(
+        'INSERT INTO recognized_ingredients (id, scan_id, name, category, confidence, confirmed) VALUES (?, ?, ?, ?, ?, ?)'
+      )
+        .bind(crypto.randomUUID(), scanId, ing.name, ing.category, ing.confidence, false)
+        .run()
+    }
+    dbSaved = true
+  } catch (e) {
+    console.error('D1 save failed:', e)
+    dbError = String(e)
   }
 
   const response: ScanResponse = {
@@ -163,7 +171,7 @@ JSON 배열로 응답해주세요. 각 항목은 다음 형식입니다:
     createdAt: now,
   }
 
-  return c.json(response, 201)
+  return c.json({ ...response, dbSaved, ...(dbError ? { dbError } : {}) }, 201)
 })
 
 // GET /api/scan/:id — Get scan result
